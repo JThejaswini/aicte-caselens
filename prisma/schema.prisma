@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Institution {
+  id               String   @id @default(cuid())
+  aictePermanentId String   @unique
+  name             String
+  type             String
+  state            String
+  district         String
+  approvalStatus   String   @default("Active")
+  attentionLevel   String   @default("Normal")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  cases Case[]
+}
+
+model Case {
+  id                  String    @id @default(cuid())
+  caseNumber          String    @unique
+  institutionId       String
+  bureau              String
+  category            String
+  description         String
+  displayDescription  String  @default("")
+  priority            String    @default("Medium")
+  status              String    @default("Open")
+  assignedOfficer     String
+  officerDesignation  String
+  proposedAction      String    @default("")
+  actionType          String    @default("NONE")
+  expectedDisposalDate DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  institution          Institution        @relation(fields: [institutionId], references: [id])
+  documents            Document[]
+  timelineEvents       TimelineEvent[]
+  coordinationsFrom    CoordinationRequest[] @relation("CoordFrom")
+  coordinationsTo      CoordinationRequest[] @relation("CoordTo")
+  relationshipsAsA     CaseRelationship[]    @relation("RelA")
+  relationshipsAsB     CaseRelationship[]    @relation("RelB")
+}
+
+model CaseRelationship {
+  id               String   @id @default(cuid())
+  caseAId          String
+  caseBId          String
+  confidence       Int
+  institutionScore Int
+  categoryScore    Int
+  keywordScore     Int
+  timelineScore    Int
+  relationshipType String
+  conflictType     String   @default("NO_CONFLICT")
+  recommendation   String
+  createdAt        DateTime @default(now())
+
+  caseA Case @relation("RelA", fields: [caseAId], references: [id])
+  caseB Case @relation("RelB", fields: [caseBId], references: [id])
+
+  @@unique([caseAId, caseBId])
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  caseId      String
+  timestamp   DateTime @default(now())
+  action      String
+  actor       String
+  designation String
+  remark      String   @default("")
+
+  case Case @relation(fields: [caseId], references: [id])
+}
+
+model CoordinationRequest {
+  id            String   @id @default(cuid())
+  caseId        String
+  relatedCaseId String
+  fromBureau    String
+  toBureau      String
+  message       String
+  status        String   @default("AWAITING_ACKNOWLEDGEMENT")
+  createdAt     DateTime @default(now())
+
+  case        Case @relation("CoordFrom", fields: [caseId], references: [id])
+  relatedCase Case @relation("CoordTo", fields: [relatedCaseId], references: [id])
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  caseId     String
+  name       String
+  type       String
+  status     String   @default("RECEIVED")
+  uploadedAt DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id])
+}
